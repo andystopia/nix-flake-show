@@ -1,7 +1,8 @@
 use std::process::Stdio;
 
 use bstr::ByteSlice;
-use internal_flake_show_output::FlakeInfo;
+pub use internal_flake_show_output::FlakeInfo;
+pub use internal_flake_show_output::IndividualFlakeInfos;
 
 pub fn nix_cmd() -> std::process::Command {
     std::process::Command::new("/nix/var/nix/profiles/default/bin/nix")
