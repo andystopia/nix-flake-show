@@ -24,6 +24,7 @@ pub struct NixFlakeShowBuilder {
     impure: bool,
     recreate_lock_file: bool,
     debug: bool,
+    refresh: bool,
     verbosity_level: usize,
     log_format: Option<NixFlakeLogFormat>,
     url: Option<std::path::PathBuf>,
@@ -32,6 +33,11 @@ pub struct NixFlakeShowBuilder {
 impl NixFlakeShowBuilder {
     pub fn all_systems(mut self, all_systems: bool) -> Self {
         self.all_systems = all_systems;
+        self
+    }
+
+    pub fn refresh(mut self, refresh: bool) -> Self {
+        self.refresh = refresh;
         self
     }
 
@@ -76,7 +82,7 @@ impl NixFlakeShowBuilder {
     }
 
     pub fn into_structured(self) -> Result<Option<FlakeInfo>, std::io::Error> {
-        let output = self.build().output()?;
+        let output = self.json(true).all_systems(true).build().output()?;
 
         if output.status.success() {
             Ok(Some(FlakeInfo::from_stdout(&output.stdout)))
@@ -140,7 +146,7 @@ impl NixFlakeShowBuilder {
 pub use internal_flake_show_output::Derivation;
 
 mod internal_flake_show_output {
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashMap;
 
     use serde::{Deserialize, Serialize};
 
@@ -154,6 +160,13 @@ mod internal_flake_show_output {
         dev_shells: HashMap<String, HighLevelFieldAnatomy>,
         #[serde(default)]
         packages: HashMap<String, HighLevelFieldAnatomy>,
+        #[serde(default)]
+        templates: HashMap<String, TemplateDescription>,
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub struct TemplateDescription {
+        description: String,
     }
 
     #[derive(Serialize, Deserialize)]
@@ -185,9 +198,11 @@ mod internal_flake_show_output {
 
     #[derive(Debug, Clone)]
     pub struct FlakeInfo {
-        // from architecture to derivation
+        /// from architecture to derivation
         pub dev_shells: HashMap<String, Vec<Derivation>>,
         pub packages: HashMap<String, Vec<Derivation>>,
+        /// from template name to template description.
+        pub templates: HashMap<String, String>,
     }
 
     impl FlakeInfo {
@@ -234,8 +249,15 @@ mod internal_flake_show_output {
                 }
             }
 
+            let templates = value
+                .templates
+                .into_iter()
+                .map(|(key, v)| (key, v.description))
+                .collect();
+
             FlakeInfo {
                 dev_shells: devs,
+                templates,
                 packages,
             }
         }
@@ -244,7 +266,7 @@ mod internal_flake_show_output {
 
 pub fn current_nix_system() -> String {
     let mut cmd = nix_cmd();
-    cmd.args(&[
+    cmd.args([
         "eval",
         "--impure",
         "--raw",
@@ -264,13 +286,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
+    fn test_local() {
         let structured = flake_show()
             .url("/Users/andy/Documents/colby/jerzy-work/surveyConformal".into())
-            .json(true)
-            .all_systems(true)
             .into_structured();
 
         dbg!(structured.unwrap().unwrap().for_current_system());
+    }
+    #[test]
+    fn test_nixos() {
+        let structured = flake_show()
+            .refresh(true)
+            .url("github:NixOS/templates".into())
+            .into_structured();
+
+        dbg!(structured.unwrap().unwrap().templates);
     }
 }
