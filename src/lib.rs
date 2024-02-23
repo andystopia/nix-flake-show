@@ -137,6 +137,7 @@ impl NixFlakeShowBuilder {
         cmd
     }
 }
+pub use internal_flake_show_output::Derivation;
 
 mod internal_flake_show_output {
     use std::collections::{HashMap, HashSet};
@@ -163,23 +164,23 @@ mod internal_flake_show_output {
     }
     #[derive(Serialize, Deserialize)]
     pub struct FlakeAnatomyDetail {
-        name: String,
-        r#type: String,
-        description: Option<String>,
+        pub name: String,
+        pub r#type: String,
+        pub description: Option<String>,
     }
 
     #[derive(Debug, Clone)]
     pub struct Derivation {
-        name: String,
-        kind: String,
-        description: Option<String>,
-        invocation: String,
+        pub name: String,
+        pub kind: String,
+        pub description: Option<String>,
+        pub invocation: String,
     }
 
     #[derive(Debug, Clone)]
     pub struct IndividualFlakeInfos {
-        dev_shells: Vec<Derivation>,
-        packages: Vec<Derivation>,
+        pub dev_shells: Vec<Derivation>,
+        pub packages: Vec<Derivation>,
     }
 
     #[derive(Debug, Clone)]
